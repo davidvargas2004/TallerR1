@@ -1,104 +1,3 @@
-📊 Análisis Exploratorio de Datos: Salarios en Ciencia de Datos e IA
-
-Este proyecto presenta un Análisis Exploratorio de Datos (EDA) sobre salarios de profesionales del área de Ciencia de Datos e Inteligencia Artificial, utilizando el dataset ds_salaries.csv.
-
-El análisis fue desarrollado en R como parte de un taller de Estadística Descriptiva, aplicando medidas de tendencia central, dispersión, forma, frecuencias, cuantiles y diferentes visualizaciones.
-
-Autor: David Mauricio Vargas Ramirez
-Código: 824144
-
-📌 Descripción del proyecto
-
-El objetivo principal es explorar cómo se distribuyen los salarios y cómo estos varían de acuerdo con diferentes características de los trabajadores y las empresas.
-
-El dataset contiene 607 registros correspondientes al periodo 2020–2022.
-
-Las principales variables utilizadas en el análisis son:
-
-experience_level: nivel de experiencia del trabajador.
-company_size: tamaño de la empresa.
-salary_in_usd: salario anual expresado en dólares estadounidenses.
-remote_ratio: proporción de trabajo remoto.
-
-Los niveles de experiencia analizados son:
-
-Código	Nivel
-EN	Entry Level
-MI	Mid Level
-SE	Senior Level
-EX	Executive Level
-🎯 Objetivos
-
-El análisis busca:
-
-Auditar y tipificar correctamente las variables del dataset.
-Analizar la distribución de los registros según el tamaño de empresa.
-Calcular medidas de tendencia central y dispersión de los salarios.
-Comparar los salarios entre diferentes niveles de experiencia.
-Analizar la asimetría y forma de las distribuciones.
-Construir tablas de frecuencia por intervalos salariales.
-Calcular cuantiles e identificar la distribución global de salarios.
-Analizar qué proporción de perfiles EN alcanza un salario de $80,000 USD o más.
-Presentar conclusiones descriptivas sobre los datos.
-🛠️ Tecnologías utilizadas
-
-El proyecto fue desarrollado utilizando:
-
-R
-R Markdown
-LaTeX / XeLaTeX
-ggplot2 — visualización de datos.
-dplyr — manipulación de datos.
-knitr — generación de tablas y documentos.
-e1071 — cálculo de medidas estadísticas.
-scales — formato de gráficos y valores.
-📂 Estructura del proyecto
-.
-├── data/
-│   └── ds_salaries.csv
-│
-├── analisis.Rmd
-│
-├── README.md
-│
-└── [PDF generado]
-
-
-El nombre del archivo .Rmd puede variar dependiendo de la versión final utilizada para entregar el proyecto.
-
-📈 Análisis realizado
-1. Carga, auditoría y tipificación
-
-Se realizó una revisión inicial de la estructura del dataset, identificando:
-
-Número de registros y variables.
-Tipos de datos.
-Escalas de medición.
-Valores faltantes (NA).
-Registros duplicados.
-
-Las variables categóricas fueron transformadas en factores ordenados cuando su naturaleza lo permitía.
-
-2. Distribución por tamaño de empresa
-
-Se construyó una tabla de frecuencias para company_size.
-
-La distribución encontrada muestra un predominio de las empresas medianas:
-
-M — Mediana: 326 registros (53.71%).
-L — Grande: 32.62%.
-S — Pequeña: 13.67%.
-
-Esto significa que más de la mitad de los registros del dataset corresponden a trabajadores de empresas clasificadas como medianas.
-
-3. Salarios según nivel de experiencia
-
-Se calcularon diferentes estadísticos descriptivos para salary_in_usd agrupando por experience_level.
-
-Entre las medidas utilizadas se encuentran:
-
-Media.
-Mediana.
 # Análisis exploratorio de salarios en Ciencia de Datos e IA
 
 Análisis exploratorio de datos (EDA) desarrollado en R para estudiar la distribución de salarios de profesionales de Ciencia de Datos e Inteligencia Artificial.
@@ -117,6 +16,17 @@ Variables principales:
 | `company_size` | Tamaño de la empresa: pequeña, mediana o grande. |
 | `salary_in_usd` | Salario anual expresado en dólares estadounidenses. |
 | `remote_ratio` | Proporción de trabajo remoto: 0%, 50% o 100%. |
+
+## Arquitectura del proyecto
+
+```mermaid
+flowchart TD
+    A[ds_salaries.csv] --> B[taller_eda_salarios.Rmd]
+    B --> C[Auditoría y tipificación]
+    C --> D[Análisis estadístico]
+    D --> E[Tablas y visualizaciones]
+    E --> F[taller_eda_salarios.pdf]
+```
 
 ## Objetivos
 
@@ -137,7 +47,7 @@ Variables principales:
 
 Estos resultados describen únicamente la muestra analizada; no representan una estimación exacta del mercado laboral mundial.
 
-## Estructura del proyecto
+## Estructura de archivos
 
 ```text
 .
