@@ -1,0 +1,4 @@
+"0","q1_v  <- quantile(df$salary_in_usd, 0.25)"
+"0","q2_v  <- quantile(df$salary_in_usd, 0.50)"
+"0","q3_v  <- quantile(df$salary_in_usd, 0.75)"
+"0","p90_v <- quantile(df$salary_in_usd, 0.90)"

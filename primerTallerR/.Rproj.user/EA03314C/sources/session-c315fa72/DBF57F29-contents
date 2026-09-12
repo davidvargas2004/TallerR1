@@ -1,0 +1,38 @@
+# Proyecto: Taller EDA — Salarios en Ciencia de Datos e IA
+
+## Estructura del proyecto
+- `taller_eda_salarios.Rmd` — Documento principal (R Markdown → PDF vía XeLaTeX). Contiene las 6 actividades del taller (carga/auditoría, frecuencias company_size, estadísticos por experience_level, distribución por intervalos, conclusiones ejecutivas, abstract). Código oculto en el cuerpo (`echo=FALSE`); se muestra completo en el Anexo Técnico final vía `ref.label`.
+- `data/ds_salaries.csv` — Dataset fuente, separador `;`, con columna índice sin nombre como primera columna (debe eliminarse con `df[, -1]` tras la carga).
+- `outputs/taller_eda_salarios.pdf` — Salida renderizada (16 páginas: ~12 de análisis + TOC/portada, 4 de anexo de código).
+- `scripts/` — Carpeta reservada para scripts auxiliares (vacía por ahora).
+
+## Esquema de datos (ds_salaries.csv)
+607 filas, 11 columnas (tras remover índice): `work_year, experience_level (EN/MI/SE/EX), employment_type, job_title, salary, salary_currency, salary_in_usd, employee_residence, remote_ratio (0/50/100), company_location, company_size (S/M/L)`.
+Sin NAs. 42 filas duplicadas exactas (no se eliminan; se interpretan como perfiles potencialmente reales, no errores).
+
+## Cómo compilar el reporte
+```r
+# Desde la consola R de Posit Assistant (executeCode) es OBLIGATORIO usar rutas
+# absolutas + intermediates_dir, porque el guardián de archivos bloquea la
+# escritura con rutas relativas del knit.md y el render falla EN SILENCIO
+# (corre todos los chunks pero no produce el PDF):
+rmarkdown::render(
+  input             = "/home/dvloopcode/primerTallerR/taller_eda_salarios.Rmd",
+  output_dir        = "/home/dvloopcode/primerTallerR/outputs",
+  intermediates_dir = tempdir()
+)
+# El usuario también puede compilar con el botón Knit de RStudio (sin problema).
+# Siempre verificar tras el render: ls -la outputs/ (fecha del PDF actualizada).
+```
+
+## Notas técnicas importantes (para evitar re-depurar)
+- El YAML usa `latex_engine: xelatex` (no pdflatex) porque el texto contiene caracteres Unicode (γ, tildes, guiones largos) que pdflatex no soporta sin paquetes adicionales.
+- `highlight: null` en el YAML evita requerir el paquete LaTeX `framed.sty`, que no está instalado en el sistema y no se pudo instalar (sin acceso sudo/tlmgr en este entorno).
+- Evitar `kableExtra::kable_styling()` encadenado con pipe nativo `|>` sobre `knitr::kable()` — causó error de dimnames en este entorno. Se usa solo `knitr::kable(..., booktabs = TRUE)`.
+- El YAML debe empezar literalmente en la línea 1 del archivo con `---` (sin caracteres antes) o rmarkdown ignora el bloque YAML y cae a HTML por defecto.
+- No pasar `output_format = 'pdf_document'` explícito en `rmarkdown::render()` si se quiere que se respeten las opciones del YAML (como `highlight: null` o `latex_engine`); dejar que se lea del YAML del archivo.
+- `glimpse()` (pillar) emite códigos de color ANSI al renderizar desde la consola de RStudio; XeLaTeX revienta con `Text line contains an invalid character`. El chunk `estructura` usa `str(df)` (base R, nunca colorea) y el setup fija `options(crayon.enabled = FALSE, cli.num_colors = 1)`. No usar `glimpse()` en chunks con salida visible para PDF.
+- No compilar manualmente con `xelatex` dentro de `outputs/`: deja `.aux`/`.toc` corruptos que hacen fallar el siguiente render de rmarkdown (aparentemente "solo", sin causa clara).
+
+## Paquetes R usados
+`dplyr`, `ggplot2`, `knitr`, `e1071` (asimetría/CV), `scales`. Todos instalados en el entorno.

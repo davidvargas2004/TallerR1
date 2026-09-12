@@ -1,0 +1,8 @@
+"0","kable(stats_df,"
+"0","      col.names = c(""Nivel"", ""n"", ""Media (USD)"", ""Mediana (USD)"","
+"0","                    ""D.E. (USD)"", ""IQR (USD)"", ""Mín."", ""Máx."","
+"0","                    ""CV (%)"", ""Asimetría""),"
+"0","      caption  = ""Estadísticos descriptivos de salary\\_in\\_usd por nivel de experiencia"","
+"0","      booktabs = TRUE,"
+"0","      align    = c(""l"",""c"",""r"",""r"",""r"",""r"",""r"",""r"",""c"",""c""),"
+"0","      format.args = list(big.mark = "",""))"

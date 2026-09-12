@@ -1,0 +1,4 @@
+"0","en_sub  <- df[df$experience_level == ""EN"", ]"
+"0","n_en    <- nrow(en_sub)"
+"0","n_80k   <- sum(en_sub$salary_in_usd >= 80000)"
+"0","pct_80k <- round(100 * n_80k / n_en, 1)"

@@ -1,0 +1,2 @@
+"0","na_col   <- colSums(is.na(df))"
+"0","dup_rows <- sum(duplicated(df))"

@@ -1,0 +1,10 @@
+# ============================================================
+# Proyecto: primerTallerR
+# Fecha: 2026-09-05
+# Descripción: Script principal del primer taller de R
+# ============================================================
+
+library(tidyverse)
+
+# Aquí comenzamos el taller...
+

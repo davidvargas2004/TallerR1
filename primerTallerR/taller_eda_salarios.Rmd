@@ -1,0 +1,450 @@
+---
+title: |
+  **Análisis Exploratorio de Datos:**  
+  Salarios en el Sector de Ciencia de Datos e IA
+subtitle: "Taller — Estadística Descriptiva con R"
+author: "David Mauricio Vargas Ramirez 824144"
+date: "`r format(Sys.Date(), '%d de %B de %Y')`"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+    fig_caption: true
+    latex_engine: xelatex
+    highlight: null
+geometry: "top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm"
+fontsize: 11pt
+header-includes:
+  - \usepackage{booktabs}
+  - \usepackage{float}
+  - \usepackage{array}
+  - \usepackage{longtable}
+  - \floatplacement{figure}{H}
+  - \floatplacement{table}{H}
+  - \renewcommand{\contentsname}{Tabla de Contenidos}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = FALSE,
+  message = FALSE,
+  warning = FALSE,
+  fig.align = "center",
+  fig.width  = 6.5,
+  fig.height = 3.8
+)
+
+# Paquetes instaldos para usar correctamente soliciatos por la porfe 
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(e1071)
+library(scales)
+```
+
+```{r carga-datos, include=FALSE}
+df <- read.csv("data/ds_salaries.csv", sep = ";", stringsAsFactors = FALSE)
+df <- df[, -1]   # elimino esto por si se pierde el indice ejejej
+
+
+df$experience_level <- factor(df$experience_level,
+                               levels = c("EN","MI","SE","EX"),
+                               labels = c("EN","MI","SE","EX"),
+                               ordered = TRUE)
+df$company_size <- factor(df$company_size,
+                           levels = c("S","M","L"),
+                           ordered = TRUE)
+df$remote_ratio <- factor(df$remote_ratio,
+                           levels = c(0, 50, 100),
+                           labels = c("Presencial (0%)",
+                                      "Híbrido (50%)",
+                                      "Remoto (100%)"),
+                           ordered = TRUE)
+```
+
+---
+
+\newpage
+
+# Abstract {-}
+
+This report is an exploratory data analysis (EDA) of the ds_salaries dataset, which has 607 salary records of data science and AI workers between 2020 and 2022. Using R (dplyr, ggplot2 and e1071) I calculated measures of central tendency, dispersion and shape, plus frequency tables and quantiles, to see how salaries change with experience level and company size. The main results are: salaries go up as experience increases; medium companies dominate the sample (54%); the salary distribution is right-skewed, because a few very high salaries pull the mean above the median; and only 31.8% of entry-level (EN) profiles earn $80,000 USD or more. These numbers only describe this sample and should not be taken as an exact picture of the global job market.
+
+---
+
+\newpage
+
+# Actividad 1: Carga, Auditoría y Tipificación
+
+## Descripción del *dataset*
+
+```{r estructura}
+glimpse(df)
+```
+
+El dataset tiene r nrow(df) registros y r ncol(df) variables sobre salarios en Ciencia de Datos e IA (2020-2022). La Tabla 1 muestra cada variable con su tipo de dato y escala de medición.
+
+```{r tabla-variables}
+tabla_vars <- data.frame(
+  Variable            = names(df),
+  Tipo_R              = c("integer","factor ord.","character","character",
+                          "integer","character","integer","character",
+                          "factor ord.","character","factor ord."),
+  Escala_Medicion     = c(
+    "Discreta (razón)",
+    "Ordinal",
+    "Nominal",
+    "Nominal",
+    "Continua (razón)",
+    "Nominal",
+    "Continua (razón)",
+    "Nominal",
+    "Ordinal / Discreta",
+    "Nominal",
+    "Ordinal"
+  ),
+  stringsAsFactors = FALSE
+)
+
+kable(tabla_vars,
+      col.names = c("Variable", "Tipo en R", "Escala de Medición"),
+      caption   = "Descripción y clasificación formal de variables",
+      booktabs  = TRUE,
+      align     = c("l","c","l"))
+```
+
+**Clasificación de las cuatro variables que se usan en el taller:**
+
+- **experience_level**  *Ordinal*: hay un orden claro entre los niveles (EN, MI, SE, EX van de menos a más experiencia), pero la "distancia" entre un nivel y otro no se puede medir. Por eso la dejo como factor ordenado.
+
+- **company_size**  *Ordinal*: igual que la anterior, S < M < L tiene un orden pequeña, mediana, grande, aunque el dataset no dice cuánto mide cada categoría.
+
+- **salary_in_usd**  *De razón*: es un número continuo y el cero significa sin salario, así que sí se pueden calcular promedios y comparar valores.
+
+- **remote_ratio**  *Ordinal*: solo toma los valores 0, 50 y 100 presencial, híbrido, remoto. La trato como categórica con orden, porque tiene sentido decir que 100 es más  que 50.
+
+## Auditoría de Calidad
+
+```{r auditoria}
+na_col   <- colSums(is.na(df))
+dup_rows <- sum(duplicated(df))
+```
+
+```{r tabla-auditoria}
+tabla_na <- data.frame(
+  Variable  = names(na_col),
+  NAs       = as.integer(na_col)
+)
+
+kable(tabla_na,
+      col.names = c("Variable", "Valores NA"),
+      caption   = "Conteo de valores faltantes por columna",
+      booktabs  = TRUE,
+      align     = c("l","c"))
+```
+
+
+---
+
+\newpage
+
+# Actividad 2: Distribución por Tamaño de Empresa
+
+## Tabla de Frecuencias
+
+```{r freq-size}
+tab_raw  <- table(droplevels(df$company_size))
+n_total  <- nrow(df)
+abs_S <- as.integer(tab_raw["S"]); abs_M <- as.integer(tab_raw["M"])
+abs_L <- as.integer(tab_raw["L"])
+tab_freq <- data.frame(
+  Categoria  = c("S — Pequeña", "M — Mediana", "L — Grande"),
+  Frec_Abs   = c(abs_S, abs_M, abs_L),
+  Frec_Rel   = round(c(abs_S, abs_M, abs_L) / n_total, 4),
+  Porcentaje = round(100 * c(abs_S, abs_M, abs_L) / n_total, 2),
+  stringsAsFactors = FALSE
+)
+```
+
+```{r tabla-freq-size}
+kable(tab_freq,
+      col.names = c("Categoría", "Frecuencia Absoluta",
+                    "Frecuencia Relativa", "Porcentaje (%)"),
+      caption  = "Distribución de frecuencias: tamaño de empresa (company\\_size)",
+      booktabs = TRUE,
+      align    = c("l","c","c","c"))
+```
+
+## Visualización
+
+```{r graf-size, fig.cap="Figura 1. Distribución de registros por tamaño de empresa (company\\_size). La barra central corresponde a empresas medianas, que concentran más de la mitad de la muestra."}
+df_plot <- data.frame(
+  Tamaño = factor(c("S\n(Pequeña)", "M\n(Mediana)", "L\n(Grande)"),
+                  levels = c("S\n(Pequeña)", "M\n(Mediana)", "L\n(Grande)")),
+  n      = as.integer(c(tab_raw["S"], tab_raw["M"], tab_raw["L"]))
+)
+
+ggplot(df_plot, aes(x = Tamaño, y = n)) +
+  geom_bar(stat = "identity", width = 0.55) +
+  geom_text(aes(label = paste0(n, "\n(",
+                               round(100 * n / sum(n), 1), "%)")),
+            vjust = -0.4, size = 3.2) +
+  labs(x = "Tamaño de empresa", y = "Frecuencia absoluta") +
+  scale_y_continuous(limits = c(0, 380), expand = c(0, 0)) +
+  theme_minimal(base_size = 11) +
+  theme(panel.grid.major.x = element_blank())
+```
+
+## Interpretación
+
+Según la Tabla 3 y la Figura 1, la mayoría de registros son de **empresas medianas M**: 326 casos, o sea el 53.71% del total. Le siguen las grandes L con 32.62% y las pequeñas S con solo el 13.67%. La distribución tiene una sola moda la categoría M y es asimétrica. Eso sí, esto describe la muestra del *dataset*, no todo el mercado laboral.
+
+---
+
+\newpage
+
+# Actividad 3: Tendencia Central, Dispersión y Forma por Nivel de Experiencia
+
+## Estadísticos Descriptivos
+
+```{r stats-exp}
+en_sal <- df$salary_in_usd[df$experience_level == "EN"]
+mi_sal <- df$salary_in_usd[df$experience_level == "MI"]
+se_sal <- df$salary_in_usd[df$experience_level == "SE"]
+ex_sal <- df$salary_in_usd[df$experience_level == "EX"]
+
+hacer_fila <- function(grupo, x) {
+  data.frame(
+    Nivel     = grupo,
+    n         = length(x),
+    Media     = round(mean(x)),
+    Mediana   = round(median(x)),
+    SD        = round(sd(x)),
+    IQR_v     = round(IQR(x)),
+    Min       = min(x),
+    Max       = max(x),
+    CV_pct    = round(sd(x) / mean(x) * 100, 1),
+    Asimetria = round(skewness(x), 3)
+  )
+}
+
+stats_df <- rbind(
+  hacer_fila("EN", en_sal),
+  hacer_fila("MI", mi_sal),
+  hacer_fila("SE", se_sal),
+  hacer_fila("EX", ex_sal)
+)
+```
+
+```{r tabla-stats-exp}
+kable(stats_df,
+      col.names = c("Nivel", "n", "Media (USD)", "Mediana (USD)",
+                    "D.E. (USD)", "IQR (USD)", "Mín.", "Máx.",
+                    "CV (%)", "Asimetría"),
+      caption  = "Estadísticos descriptivos de salary\\_in\\_usd por nivel de experiencia",
+      booktabs = TRUE,
+      align    = c("l","c","r","r","r","r","r","r","c","c"),
+      format.args = list(big.mark = ","))
+```
+
+## Análisis por Grupos
+
+En la Tabla 4 se ve que el salario sube de EN a MI, luego a SE y finalmente a EX, que es lo esperable: a más experiencia, mejor pago. Eso sí, esto no prueba causalidad, porque también puede influir el país o el tipo de empresa.
+
+Para el **grupo SE** (`r stats_df$n[stats_df$Nivel=="SE"]` registros): la media ($`r format(stats_df$Media[stats_df$Nivel=="SE"], big.mark=",")`\ USD) es mayor que la mediana ($`r format(stats_df$Mediana[stats_df$Nivel=="SE"], big.mark=",")`\ USD), con una diferencia de $`r format(stats_df$Media[stats_df$Nivel=="SE"] - stats_df$Mediana[stats_df$Nivel=="SE"], big.mark=",")`\ USD. El coeficiente de asimetría da **γ₁ = `r stats_df$Asimetria[stats_df$Nivel=="SE"]`**, o sea **asimetría positiva**: hay pocos salarios muy altos que jalan la media hacia arriba. Por eso en este grupo la mediana describe mejor el salario "típico".
+
+**Coeficiente de variación (CV):** sirve para comparar la dispersión entre grupos que tienen medias distintas. EN y MI tienen desviaciones estándar diferentes ($`r format(stats_df$SD[stats_df$Nivel=="EN"], big.mark=",")`\ y $`r format(stats_df$SD[stats_df$Nivel=="MI"], big.mark=",")`\ USD), pero al dividir entre su media los dos quedan con un CV de ~72%: en proporción son igual de variables. El grupo SE tiene el CV más bajo (~42%), o sea salarios más homogéneos, quizás porque ese nivel tiene muchos registros de EE. UU.
+
+## Boxplot Comparativo
+
+```{r boxplot-exp, fig.cap="Figura 2. Boxplot de salary\\_in\\_usd por nivel de experiencia. Se observa incremento en medianas y amplitud intercuartílica con el nivel de seniority. Los puntos fuera de los bigotes representan valores atípicos potenciales.", fig.height=4.2}
+df_box <- df |>
+  mutate(Nivel = factor(experience_level,
+                        levels = c("EN","MI","SE","EX"),
+                        labels = c("EN\n(Entry)", "MI\n(Mid)",
+                                   "SE\n(Senior)", "EX\n(Executive)")))
+
+ggplot(df_box, aes(x = Nivel, y = salary_in_usd / 1000)) +
+  geom_boxplot(outlier.shape = 21, outlier.size = 1.5,
+               outlier.fill  = "white", width = 0.55) +
+  labs(x = "Nivel de experiencia",
+       y = "Salario (miles USD)") +
+  scale_y_continuous(labels = scales::comma_format(suffix = "k")) +
+  theme_minimal(base_size = 11) +
+  theme(panel.grid.major.x = element_blank())
+```
+
+En la Figura 2 las medianas suben con el nivel de experiencia, igual que en la Tabla 4. La caja de EX es la más ancha   $103,744, o sea que los salarios ejecutivos son los más variables. En EN hay varios puntos atípicos por arriba (hay casos que ganan más de $200,000 USD: son perfiles junior muy bien pagados, seguramente en empresas grandes de Estados Unidos.
+
+## Q-Q Plot — Grupo SE
+
+```{r qqplot-se, fig.cap="Figura 3. Q-Q plot de salary\\_in\\_usd para el grupo SE. Las desviaciones en la cola derecha confirman la asimetría positiva observada con el coeficiente de Pearson.", fig.height=4}
+se_sal <- df$salary_in_usd[df$experience_level == "SE"]
+
+qqnorm(se_sal / 1000,
+       main = "",
+       xlab = "Cuantiles teóricos (distribución normal)",
+       ylab = "Cuantiles observados (miles USD)",
+       pch  = 16, cex = 0.65, col = "grey30")
+qqline(se_sal / 1000, col = "black", lwd = 1.3, lty = 2)
+```
+
+El Q-Q plot Figura 3 compara los datos del grupo SE contra una distribución normal: si fueran normales, todos los puntos caerían sobre la línea. Se ve que los puntos de la derecha (los salarios altos) se despegan de la línea hacia arriba, lo que confirma la asimetría positiva que ya había dado el coeficiente  y la diferencia entre media y mediana. En pocas palabras: los datos de SE no siguen una distribución normal, así que una prueba como la t de Student habría que tomarla con reserva en este grupo.
+
+---
+
+\newpage
+
+# Actividad 4: Distribución por Intervalos y Umbral Salarial
+
+## Cuantiles de *salary\_in\_usd*
+
+```{r cuantiles}
+q1_v  <- quantile(df$salary_in_usd, 0.25)
+q2_v  <- quantile(df$salary_in_usd, 0.50)
+q3_v  <- quantile(df$salary_in_usd, 0.75)
+p90_v <- quantile(df$salary_in_usd, 0.90)
+```
+
+Los cuantiles globales de `salary_in_usd` son:
+
+| Estadístico | Valor (USD) | Interpretación |
+|:------------|------------:|:---------------|
+| Q1 (P25)    | `r format(q1_v, big.mark=",")`  | 25% de los perfiles gana menos de esta cifra |
+| Q2 — Mediana (P50) | `r format(q2_v, big.mark=",")` | Valor central de la distribución |
+| Q3 (P75)    | `r format(q3_v, big.mark=",")` | 75% gana por debajo de este umbral |
+| P90         | `r format(p90_v, big.mark=",")` | Solo el 10% supera esta compensación |
+
+El IQR global (Q3 − Q1) es $`r format(q3_v - q1_v, big.mark=",")`\ USD: la mitad central de los datos está entre $`r format(q1_v, big.mark=",")`\ y $`r format(q3_v, big.mark=",")`\ USD.
+
+## Tabla de Frecuencias por Intervalos
+
+```{r tabla-intervalos}
+breaks_v <- c(0, 50000, 100000, 150000, 200000, 250000, 350000, 650000)
+etiquetas <- c("[0-50k)", "[50k-100k)", "[100k-150k)",
+               "[150k-200k)", "[200k-250k)",
+               "[250k-350k)", "[350k-650k]")
+
+clases <- cut(df$salary_in_usd, breaks = breaks_v,
+              labels = etiquetas, right = FALSE, include.lowest = TRUE)
+
+tab_int <- as.data.frame(table(clases))
+names(tab_int) <- c("Intervalo_USD", "Frec_Abs")
+tab_int$Frec_Rel  <- round(tab_int$Frec_Abs / nrow(df), 4)
+tab_int$Porcentaje<- round(100 * tab_int$Frec_Abs / nrow(df), 2)
+tab_int$FA_Acum   <- cumsum(tab_int$Frec_Abs)
+tab_int$FR_Acum   <- round(cumsum(tab_int$Frec_Rel), 4)
+
+kable(tab_int,
+      col.names = c("Intervalo (USD)", "Frec. Abs.", "Frec. Rel.",
+                    "% del total", "Frec. Abs. Acum.", "Frec. Rel. Acum."),
+      caption  = "Distribución de salary\\_in\\_usd por intervalos de clase (7 clases)",
+      booktabs = TRUE,
+      align    = c("l","c","c","c","c","c"))
+```
+
+## Histograma
+
+```{r histograma, fig.cap="Figura 4. Histograma de salary\\_in\\_usd con 7 clases. La distribución es unimodal con marcada asimetría positiva (cola derecha larga). La línea discontinua indica la mediana global.", fig.height=3.8}
+df_hist <- as.data.frame(table(clases))
+names(df_hist) <- c("clase", "n")
+
+ggplot(df_hist, aes(x = clase, y = n)) +
+  geom_bar(stat = "identity", width = 0.85) +
+  geom_text(aes(label = n), vjust = -0.4, size = 3) +
+  geom_vline(xintercept = which(etiquetas == "[100k – 150k)") - 0.04,
+             linetype = "dashed", linewidth = 0.7, color = "grey40") +
+  annotate("text", x = 3.4, y = 195,
+           label = paste0("Mediana ~ $", format(round(q2_v/1000, 1), big.mark=","), "k"),
+           size = 3, hjust = 0, color = "grey30") +
+  labs(x = "Salario (USD)", y = "Frecuencia absoluta") +
+  scale_y_continuous(limits = c(0, 215), expand = c(0, 0)) +
+  theme_minimal(base_size = 10) +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1),
+        panel.grid.major.x = element_blank())
+```
+
+En la Tabla 5 y la Figura 4 el intervalo con más registros es 100k-150k. La distribución tiene una sola moda y la cola derecha es larga: son pocas las personas que ganan más de $200k, pero esos casos suben la media lo mismo que pasó con el Q-Q plot del grupo SE. La mayoría de la muestra se concentra entre $100k y $150k USD.
+
+## Umbral Salarial EN ≥ \$80,000 USD
+
+```{r umbral-en}
+en_sub  <- df[df$experience_level == "EN", ]
+n_en    <- nrow(en_sub)
+n_80k   <- sum(en_sub$salary_in_usd >= 80000)
+pct_80k <- round(100 * n_80k / n_en, 1)
+```
+
+De los **`r n_en` registros EN del dataset, n_80k pct_80k% ganan $80,000 USD o más. Hay que tener cuidado con este dato: los EN con sueldo alto casi todos están en EE. UU. o en roles muy especializados por ejemplo Machine Learning Engineer. Este porcentaje no se puede generalizar a todos los perfiles junior del mundo; es solo lo que se ve en esta muestra.
+
+---
+
+\newpage
+
+# Actividad 5: Conclusiones Ejecutivas
+
+Entre más experiencia tienes, mejor te pagan: Las medianas de sueldo van subiendo según el nivel: principiantes (EN) ganan alrededor de $56,500 USD, nivel medio (MI) $76,940, sénior (SE) $135,500 y los ejecutivos (EX) llegan a los $171,438. Eso sí, los ejecutivos son los que tienen la diferencia de sueldos más disparada entre sí.
+
+Predominan las empresas medianas: Poco más de la mitad de los datos (el 53.7%) vienen de empresas de tamaño mediano.
+
+Unos cuantos ganan muchísimo: En todos los niveles, el promedio salió más alto que la mediana. Esto pasa porque hay algunos sueldos extremadamente altos que suben el promedio hacia arriba, sobre todo en los niveles medio (MI) y ejecutivo (EX).
+
+Empezar no es fácil: Solo como el 31.8% de los que van empezando (EN) logran ganar $80,000 USD o más al año.
+
+Los sénior tienen sueldos más parecidos entre sí: El grupo sénior (SE) es el más parejo en sus salarios. Puede ser porque la mayoría trabaja en Estados Unidos, donde los sueldos están más estandarizados, pero habría que revisarlo bien por país.
+---
+
+\newpage
+
+# Anexo Técnico: Código R Completo {-}
+
+El código a continuación reproduce íntegramente todos los cálculos, tablas y gráficos de este documento, organizado por sección de análisis y parametros solicitados por el docente.
+
+**A1 — Carga de datos y tipificación**
+```{r ref.label='carga-datos', echo=TRUE, eval=FALSE}
+```
+
+**A2 — Auditoría: NAs y duplicados**
+```{r ref.label='auditoria', echo=TRUE, eval=FALSE}
+```
+
+**A3 — Tabla de variables**
+```{r ref.label='tabla-variables', echo=TRUE, eval=FALSE}
+```
+
+**A4 — Frecuencias company\_size**
+```{r ref.label='freq-size', echo=TRUE, eval=FALSE}
+```
+
+**A5 — Gráfico company\_size**
+```{r ref.label='graf-size', echo=TRUE, eval=FALSE}
+```
+
+**A6 — Estadísticos por experience\_level**
+```{r ref.label='stats-exp', echo=TRUE, eval=FALSE}
+```
+
+**A7 — Boxplot**
+```{r ref.label='boxplot-exp', echo=TRUE, eval=FALSE}
+```
+
+**A8 — Q-Q plot grupo SE**
+```{r ref.label='qqplot-se', echo=TRUE, eval=FALSE}
+```
+
+**A9 — Cuantiles globales**
+```{r ref.label='cuantiles', echo=TRUE, eval=FALSE}
+```
+
+**A10 — Tabla de frecuencias por intervalos**
+```{r ref.label='tabla-intervalos', echo=TRUE, eval=FALSE}
+```
+
+**A11 — Histograma**
+```{r ref.label='histograma', echo=TRUE, eval=FALSE}
+```
+
+**A12 — Umbral EN ≥ \$80,000**
+```{r ref.label='umbral-en', echo=TRUE, eval=FALSE}
+```

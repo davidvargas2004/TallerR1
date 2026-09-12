@@ -1,0 +1,6 @@
+"0","kable(tab_freq,"
+"0","      col.names = c(""Categoría"", ""Frecuencia Absoluta"","
+"0","                    ""Frecuencia Relativa"", ""Porcentaje (%)""),"
+"0","      caption  = ""Distribución de frecuencias: tamaño de empresa (company\\_size)"","
+"0","      booktabs = TRUE,"
+"0","      align    = c(""l"",""c"",""c"",""c""))"

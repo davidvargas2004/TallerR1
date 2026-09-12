@@ -1,0 +1,228 @@
+browseURL("outputs/taller_eda_salarios.pdf")
+browseURL("outputs/taller_eda_salarios.pdf")
+knitr::opts_chunk$set(
+echo    = FALSE,
+message = FALSE,
+warning = FALSE,
+fig.align = "center",
+fig.width  = 6.5,
+fig.height = 3.8
+)
+# Paquetes instaldos para usar correctamente soliciatos por la porfe
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(e1071)
+library(scales)
+knitr::opts_chunk$set(
+echo    = FALSE,
+message = FALSE,
+warning = FALSE,
+fig.align = "center",
+fig.width  = 6.5,
+fig.height = 3.8
+)
+# Paquetes instaldos para usar correctamente soliciatos por la porfe
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(e1071)
+library(scales)
+df <- read.csv("data/ds_salaries.csv", sep = ";", stringsAsFactors = FALSE)
+df <- df[, -1]   # elimino esto por si se pierde el indice ejejej
+df$experience_level <- factor(df$experience_level,
+levels = c("EN","MI","SE","EX"),
+labels = c("EN","MI","SE","EX"),
+ordered = TRUE)
+df$company_size <- factor(df$company_size,
+levels = c("S","M","L"),
+ordered = TRUE)
+df$remote_ratio <- factor(df$remote_ratio,
+levels = c(0, 50, 100),
+labels = c("Presencial (0%)",
+"Híbrido (50%)",
+"Remoto (100%)"),
+ordered = TRUE)
+glimpse(df)
+tabla_vars <- data.frame(
+Variable            = names(df),
+Tipo_R              = c("integer","factor ord.","character","character",
+"integer","character","integer","character",
+"factor ord.","character","factor ord."),
+Escala_Medicion     = c(
+"Discreta (razón)",
+"Ordinal",
+"Nominal",
+"Nominal",
+"Continua (razón)",
+"Nominal",
+"Continua (razón)",
+"Nominal",
+"Ordinal / Discreta",
+"Nominal",
+"Ordinal"
+),
+stringsAsFactors = FALSE
+)
+kable(tabla_vars,
+col.names = c("Variable", "Tipo en R", "Escala de Medición"),
+caption   = "Descripción y clasificación formal de variables",
+booktabs  = TRUE,
+align     = c("l","c","l"))
+na_col   <- colSums(is.na(df))
+dup_rows <- sum(duplicated(df))
+tabla_na <- data.frame(
+Variable  = names(na_col),
+NAs       = as.integer(na_col)
+)
+kable(tabla_na,
+col.names = c("Variable", "Valores NA"),
+caption   = "Conteo de valores faltantes por columna",
+booktabs  = TRUE,
+align     = c("l","c"))
+tab_raw  <- table(droplevels(df$company_size))
+n_total  <- nrow(df)
+abs_S <- as.integer(tab_raw["S"]); abs_M <- as.integer(tab_raw["M"])
+abs_L <- as.integer(tab_raw["L"])
+tab_freq <- data.frame(
+Categoria  = c("S — Pequeña", "M — Mediana", "L — Grande"),
+Frec_Abs   = c(abs_S, abs_M, abs_L),
+Frec_Rel   = round(c(abs_S, abs_M, abs_L) / n_total, 4),
+Porcentaje = round(100 * c(abs_S, abs_M, abs_L) / n_total, 2),
+stringsAsFactors = FALSE
+)
+kable(tab_freq,
+col.names = c("Categoría", "Frecuencia Absoluta",
+"Frecuencia Relativa", "Porcentaje (%)"),
+caption  = "Distribución de frecuencias: tamaño de empresa (company\\_size)",
+booktabs = TRUE,
+align    = c("l","c","c","c"))
+df_plot <- data.frame(
+Tamaño = factor(c("S\n(Pequeña)", "M\n(Mediana)", "L\n(Grande)"),
+levels = c("S\n(Pequeña)", "M\n(Mediana)", "L\n(Grande)")),
+n      = as.integer(c(tab_raw["S"], tab_raw["M"], tab_raw["L"]))
+)
+ggplot(df_plot, aes(x = Tamaño, y = n)) +
+geom_bar(stat = "identity", width = 0.55) +
+geom_text(aes(label = paste0(n, "\n(",
+round(100 * n / sum(n), 1), "%)")),
+vjust = -0.4, size = 3.2) +
+labs(x = "Tamaño de empresa", y = "Frecuencia absoluta") +
+scale_y_continuous(limits = c(0, 380), expand = c(0, 0)) +
+theme_minimal(base_size = 11) +
+theme(panel.grid.major.x = element_blank())
+en_sal <- df$salary_in_usd[df$experience_level == "EN"]
+mi_sal <- df$salary_in_usd[df$experience_level == "MI"]
+se_sal <- df$salary_in_usd[df$experience_level == "SE"]
+ex_sal <- df$salary_in_usd[df$experience_level == "EX"]
+hacer_fila <- function(grupo, x) {
+data.frame(
+Nivel     = grupo,
+n         = length(x),
+Media     = round(mean(x)),
+Mediana   = round(median(x)),
+SD        = round(sd(x)),
+IQR_v     = round(IQR(x)),
+Min       = min(x),
+Max       = max(x),
+CV_pct    = round(sd(x) / mean(x) * 100, 1),
+Asimetria = round(skewness(x), 3)
+)
+}
+stats_df <- rbind(
+hacer_fila("EN", en_sal),
+hacer_fila("MI", mi_sal),
+hacer_fila("SE", se_sal),
+hacer_fila("EX", ex_sal)
+)
+kable(stats_df,
+col.names = c("Nivel", "n", "Media (USD)", "Mediana (USD)",
+"D.E. (USD)", "IQR (USD)", "Mín.", "Máx.",
+"CV (%)", "Asimetría"),
+caption  = "Estadísticos descriptivos de salary\\_in\\_usd por nivel de experiencia",
+booktabs = TRUE,
+align    = c("l","c","r","r","r","r","r","r","c","c"),
+format.args = list(big.mark = ","))
+df_box <- df |>
+mutate(Nivel = factor(experience_level,
+levels = c("EN","MI","SE","EX"),
+labels = c("EN\n(Entry)", "MI\n(Mid)",
+"SE\n(Senior)", "EX\n(Executive)")))
+ggplot(df_box, aes(x = Nivel, y = salary_in_usd / 1000)) +
+geom_boxplot(outlier.shape = 21, outlier.size = 1.5,
+outlier.fill  = "white", width = 0.55) +
+labs(x = "Nivel de experiencia",
+y = "Salario (miles USD)") +
+scale_y_continuous(labels = scales::comma_format(suffix = "k")) +
+theme_minimal(base_size = 11) +
+theme(panel.grid.major.x = element_blank())
+se_sal <- df$salary_in_usd[df$experience_level == "SE"]
+qqnorm(se_sal / 1000,
+main = "",
+xlab = "Cuantiles teóricos (distribución normal)",
+ylab = "Cuantiles observados (miles USD)",
+pch  = 16, cex = 0.65, col = "grey30")
+qqline(se_sal / 1000, col = "black", lwd = 1.3, lty = 2)
+q1_v  <- quantile(df$salary_in_usd, 0.25)
+q2_v  <- quantile(df$salary_in_usd, 0.50)
+q3_v  <- quantile(df$salary_in_usd, 0.75)
+p90_v <- quantile(df$salary_in_usd, 0.90)
+breaks_v <- c(0, 50000, 100000, 150000, 200000, 250000, 350000, 650000)
+etiquetas <- c("[0-50k)", "[50k-100k)", "[100k-150k)",
+"[150k-200k)", "[200k-250k)",
+"[250k-350k)", "[350k-650k]")
+clases <- cut(df$salary_in_usd, breaks = breaks_v,
+labels = etiquetas, right = FALSE, include.lowest = TRUE)
+tab_int <- as.data.frame(table(clases))
+names(tab_int) <- c("Intervalo_USD", "Frec_Abs")
+tab_int$Frec_Rel  <- round(tab_int$Frec_Abs / nrow(df), 4)
+tab_int$Porcentaje<- round(100 * tab_int$Frec_Abs / nrow(df), 2)
+tab_int$FA_Acum   <- cumsum(tab_int$Frec_Abs)
+tab_int$FR_Acum   <- round(cumsum(tab_int$Frec_Rel), 4)
+kable(tab_int,
+col.names = c("Intervalo (USD)", "Frec. Abs.", "Frec. Rel.",
+"% del total", "Frec. Abs. Acum.", "Frec. Rel. Acum."),
+caption  = "Distribución de salary\\_in\\_usd por intervalos de clase (7 clases)",
+booktabs = TRUE,
+align    = c("l","c","c","c","c","c"))
+df_hist <- as.data.frame(table(clases))
+names(df_hist) <- c("clase", "n")
+ggplot(df_hist, aes(x = clase, y = n)) +
+geom_bar(stat = "identity", width = 0.85) +
+geom_text(aes(label = n), vjust = -0.4, size = 3) +
+geom_vline(xintercept = which(etiquetas == "[100k – 150k)") - 0.04,
+linetype = "dashed", linewidth = 0.7, color = "grey40") +
+annotate("text", x = 3.4, y = 195,
+label = paste0("Mediana ~ $", format(round(q2_v/1000, 1), big.mark=","), "k"),
+size = 3, hjust = 0, color = "grey30") +
+labs(x = "Salario (USD)", y = "Frecuencia absoluta") +
+scale_y_continuous(limits = c(0, 215), expand = c(0, 0)) +
+theme_minimal(base_size = 10) +
+theme(axis.text.x = element_text(angle = 30, hjust = 1),
+panel.grid.major.x = element_blank())
+en_sub  <- df[df$experience_level == "EN", ]
+n_en    <- nrow(en_sub)
+n_80k   <- sum(en_sub$salary_in_usd >= 80000)
+pct_80k <- round(100 * n_80k / n_en, 1)
+rmarkdown::render(
+input             = "/home/dvloopcode/primerTallerR/taller_eda_salarios.Rmd",
+output_dir        = "/home/dvloopcode/primerTallerR/outputs",
+intermediates_dir = tempdir()
+)
+getOption("crayon.enabled"); cli::num_ansi_colors()
+rmarkdown::render(
+input             = "/home/dvloopcode/primerTallerR/taller_eda_salarios.Rmd",
+output_dir        = "/home/dvloopcode/primerTallerR/outputs",
+intermediates_dir = tempdir()
+)
+sum(grepl("\033", utils::capture.output(dplyr::glimpse(df))))
+rmarkdown::render(
+input             = "/home/dvloopcode/primerTallerR/taller_eda_salarios.Rmd",
+output_dir        = "/home/dvloopcode/primerTallerR/outputs",
+intermediates_dir = tempdir()
+)
+rmarkdown::render(
+input             = "/home/dvloopcode/primerTallerR/taller_eda_salarios.Rmd",
+output_dir        = "/home/dvloopcode/primerTallerR/outputs",
+intermediates_dir = tempdir()
+)

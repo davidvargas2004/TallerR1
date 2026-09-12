@@ -1,0 +1,7 @@
+"0","se_sal <- df$salary_in_usd[df$experience_level == ""SE""]"
+"0",""
+"0","qqnorm(se_sal / 1000,"
+"0","       main = """","
+"0","       xlab = ""Cuantiles teóricos (distribución normal)"","
+"0","       ylab = ""Cuantiles observados (miles USD)"","
+"0","       pch  = 16, cex = 0.65, col = ""grey30"")"
